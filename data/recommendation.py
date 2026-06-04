@@ -68,35 +68,48 @@ def _label_from_score(score, signal, rsi):
 
 
 def recommend(ticker):
+    # Generate a simple BUY/HOLD/SELL recommendation for a ticker.
+    # The final decision is based on a normalized score and the current signal.
     try:
         metrics = analyze_stock(ticker)
+        # Extract the core metrics once so we can safely reuse them.
+        signal = metrics.get("signal")
+        current_rsi = metrics.get("current_rsi")
+        sharpe = metrics.get("sharpe")
+
+        # Score calculation combines Sharpe, RSI, and moving average signal.
         score = _score_from_metrics(metrics)
-        label = _label_from_score(score, metrics.get("signal"), metrics.get("current_rsi"))
+        # Label logic uses the score plus trend and RSI context.
+        label = _label_from_score(score, signal, current_rsi)
 
         reasoning = []
-        reasoning.append(f"Sharpe ratio is {metrics.get('sharpe')}.")
-        reasoning.append(f"RSI is {metrics.get('current_rsi')}.")
-        reasoning.append(f"MA signal is {metrics.get('signal')}.")
+        # Start with the raw metric values so the output is easy to follow.
+        reasoning.append(f"Sharpe ratio is {sharpe}.")
+        reasoning.append(f"RSI is {current_rsi}.")
+        reasoning.append(f"MA signal is {signal}.")
 
-        if metrics.get("current_rsi") is not None:
-            if metrics.get("current_rsi") < 30:
+        # Add a short comment about RSI band placement.
+        if current_rsi is not None:
+            if current_rsi < 30:
                 reasoning.append("RSI is oversold, which can support a stronger buy case.")
-            elif metrics.get("current_rsi") > 70:
+            elif current_rsi > 70:
                 reasoning.append("RSI is overbought, which raises caution.")
             else:
                 reasoning.append("RSI is in a neutral range.")
 
-        if metrics.get("sharpe") is not None:
-            if metrics.get("sharpe") >= 1:
+        # Add a comment about risk-adjusted performance based on Sharpe ratio.
+        if sharpe is not None:
+            if sharpe >= 1:
                 reasoning.append("Risk-adjusted performance is healthy.")
-            elif metrics.get("sharpe") >= 0.5:
+            elif sharpe >= 0.5:
                 reasoning.append("Risk-adjusted performance is modest.")
             else:
                 reasoning.append("Risk-adjusted performance is weak.")
 
-        if metrics.get("signal") == "BUY":
+        # Add a comment describing the moving average trend signal.
+        if signal == "BUY":
             reasoning.append("The short-term trend is above the long-term trend, supporting a bullish view.")
-        elif metrics.get("signal") == "SELL":
+        elif signal == "SELL":
             reasoning.append("The short-term trend is below the long-term trend, which is bearish.")
         else:
             reasoning.append("Trend signal is not available.")
@@ -108,6 +121,7 @@ def recommend(ticker):
             "reasoning": " ".join(reasoning)
         }
     except Exception as e:
+        # If anything goes wrong, return a safe error result instead of crashing.
         return {
             "ticker": ticker,
             "score": 0,

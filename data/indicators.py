@@ -132,7 +132,7 @@ def analyze_stock(ticker, debug=False):
     total_return = (end_price / start_price) - 1
 
     # this should match total_return very closely
-    total_return_from_daily_returns = (1 + returns).prod() - 1
+    total_return_from_daily_returns = float(np.prod(1 + returns.to_numpy()) - 1)
 
     # use actual calendar time if the index is dates
     if isinstance(price_series.index, pd.DatetimeIndex):
