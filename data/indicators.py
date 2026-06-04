@@ -201,8 +201,9 @@ def compare_stocks(tickers):
     return df
 
 
-tickers = ["AAPL", "NVDA", "TSLA", "MSFT", "AMD"]
+if __name__ == "__main__":
+    tickers = ["AAPL", "NVDA", "TSLA", "MSFT", "AMD"]
 
-comparison_df = compare_stocks(tickers)
+    comparison_df = compare_stocks(tickers)
 
-print(comparison_df)
+    print(comparison_df)

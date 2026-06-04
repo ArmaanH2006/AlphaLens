@@ -68,53 +68,76 @@ def _label_from_score(score, signal, rsi):
 
 
 def recommend(ticker):
-    # Get the metrics from the indicator analysis.
-    metrics = analyze_stock(ticker)
+    try:
+        metrics = analyze_stock(ticker)
+        score = _score_from_metrics(metrics)
+        label = _label_from_score(score, metrics.get("signal"), metrics.get("current_rsi"))
 
-    # Convert metrics into a single recommendation score.
-    score = _score_from_metrics(metrics)
-    # Use score plus trend and RSI to choose BUY/HOLD/SELL.
-    label = _label_from_score(score, metrics.get("signal"), metrics.get("current_rsi"))
+        reasoning = []
+        reasoning.append(f"Sharpe ratio is {metrics.get('sharpe')}.")
+        reasoning.append(f"RSI is {metrics.get('current_rsi')}.")
+        reasoning.append(f"MA signal is {metrics.get('signal')}.")
 
-    reasoning = []
-    # Build a human-readable explanation for the result.
-    reasoning.append(f"Sharpe ratio is {metrics.get('sharpe')}.")
-    reasoning.append(f"RSI is {metrics.get('current_rsi')}.")
-    reasoning.append(f"MA signal is {metrics.get('signal')}.")
+        if metrics.get("current_rsi") is not None:
+            if metrics.get("current_rsi") < 30:
+                reasoning.append("RSI is oversold, which can support a stronger buy case.")
+            elif metrics.get("current_rsi") > 70:
+                reasoning.append("RSI is overbought, which raises caution.")
+            else:
+                reasoning.append("RSI is in a neutral range.")
 
-    if metrics.get("current_rsi") is not None:
-        if metrics.get("current_rsi") < 30:
-            reasoning.append("RSI is oversold, which can support a stronger buy case.")
-        elif metrics.get("current_rsi") > 70:
-            reasoning.append("RSI is overbought, which raises caution.")
+        if metrics.get("sharpe") is not None:
+            if metrics.get("sharpe") >= 1:
+                reasoning.append("Risk-adjusted performance is healthy.")
+            elif metrics.get("sharpe") >= 0.5:
+                reasoning.append("Risk-adjusted performance is modest.")
+            else:
+                reasoning.append("Risk-adjusted performance is weak.")
+
+        if metrics.get("signal") == "BUY":
+            reasoning.append("The short-term trend is above the long-term trend, supporting a bullish view.")
+        elif metrics.get("signal") == "SELL":
+            reasoning.append("The short-term trend is below the long-term trend, which is bearish.")
         else:
-            reasoning.append("RSI is in a neutral range.")
+            reasoning.append("Trend signal is not available.")
 
-    if metrics.get("sharpe") is not None:
-        if metrics.get("sharpe") >= 1:
-            reasoning.append("Risk-adjusted performance is healthy.")
-        elif metrics.get("sharpe") >= 0.5:
-            reasoning.append("Risk-adjusted performance is modest.")
-        else:
-            reasoning.append("Risk-adjusted performance is weak.")
+        return {
+            "ticker": ticker,
+            "score": round(score, 1),
+            "label": label,
+            "reasoning": " ".join(reasoning)
+        }
+    except Exception as e:
+        return {
+            "ticker": ticker,
+            "score": 0,
+            "label": "ERROR",
+            "reasoning": f"Could not analyze {ticker}: {str(e)}"
+        }
 
-    if metrics.get("signal") == "BUY":
-        reasoning.append("The short-term trend is above the long-term trend, supporting a bullish view.")
-    elif metrics.get("signal") == "SELL":
-        reasoning.append("The short-term trend is below the long-term trend, which is bearish.")
-    else:
-        reasoning.append("Trend signal is not available.")
-
-    return {
-        "ticker": ticker,
-        "score": round(score, 1),
-        "label": label,
-        "reasoning": " ".join(reasoning)
-    }
-
+#Test cases to validate the recommendation engine with various tickers, including edge cases and error handling.
 
 if __name__ == "__main__":
     tickers = ["AAPL", "NVDA", "TSLA", "MSFT", "AMD"]
     for t in tickers:
         rec = recommend(t)
         print(f"{t}: score={rec['score']} label={rec['label']} reason={rec['reasoning']}")
+
+
+    # Test 1 - edge case tickers
+    edge_cases = ["GME", "PLTR", "COIN", "SPY", "AMZN"]
+    for t in edge_cases:
+        rec = recommend(t)
+        print(f"{t}: score={rec['score']} label={rec['label']}")
+
+    # Test 2 - bad ticker
+    rec = recommend("FAKESTOCKXYZ")
+    print(rec)
+
+    # Test 3 - scores always 0 to 100
+    test_tickers = ["AAPL", "NVDA", "TSLA", "MSFT", "AMD", "GME", "SPY"]
+    for t in test_tickers:
+        rec = recommend(t)
+        assert 0 <= rec['score'] <= 100, f"Score out of range for {t}"
+        assert rec['label'] in ["BUY", "HOLD", "SELL", "ERROR"], f"Invalid label for {t}"
+        print(f"{t} passed")
