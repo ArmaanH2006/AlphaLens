@@ -57,7 +57,7 @@ def get_indicators(df):
     gain = delta.where(delta > 0, 0)
     loss = -delta.where(delta < 0, 0)
 
-    #step 3 find the average gain and loss over a 14 day period
+    #step 3 and 4 find the average gain and loss over a 14 day period
     avg_gain = gain.ewm(alpha=1/14, adjust=False, min_periods=14).mean()
     avg_loss = loss.ewm(alpha=1/14, adjust=False, min_periods=14).mean()
 
