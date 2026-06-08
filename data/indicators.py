@@ -1,4 +1,3 @@
-from matplotlib import ticker
 import pandas as pd
 import numpy as np
 from stock_data import get_stock_data
@@ -130,9 +129,6 @@ def analyze_stock(ticker, debug=False):
     end_price = price_series.iloc[-1]
 
     total_return = (end_price / start_price) - 1
-
-    # this should match total_return very closely
-    total_return_from_daily_returns = float(np.prod(1 + returns.to_numpy()) - 1)
 
     # use actual calendar time if the index is dates
     if isinstance(price_series.index, pd.DatetimeIndex):

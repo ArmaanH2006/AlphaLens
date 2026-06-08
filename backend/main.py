@@ -170,9 +170,10 @@ def trending_endpoint():
 
 
 @app.get("/analyze/{ticker}")
-def analyze_endpoint(ticker: str):
+def analyze_endpoint(ticker: str, period: str = "1y"):
     try:
         ticker = validate_ticker(ticker)
+        period = validate_period(period)
         return analyze_stock(ticker)
 
     except HTTPException:
