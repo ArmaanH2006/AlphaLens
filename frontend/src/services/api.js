@@ -11,3 +11,11 @@ export async function getTrending() {
   const response = await axios.get(`${API_BASE_URL}/api/trending`);
   return response.data;
 }
+
+export async function getPortfolio(tickers) {
+  const response = await axios.get(
+    `${API_BASE_URL}/portfolio?tickers=${tickers}`
+  );
+
+  return response.data;
+}

@@ -1,3 +1,5 @@
+import StockChart from "./components/StockChart";
+import PortfolioView from "./components/PortfolioView";
 import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
 import MetricCard from "./components/MetricCard";
@@ -49,6 +51,10 @@ function App() {
         <MetricCard label="RSI" value={stockData.current_rsi} />
         <MetricCard label="Signal" value={stockData.signal} />
       </div>
+
+      <StockChart />
+
+      <PortfolioView />
     </div>
   );
 }
