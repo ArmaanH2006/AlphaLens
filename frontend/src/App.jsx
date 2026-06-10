@@ -1,10 +1,12 @@
 import StockChart from "./components/StockChart";
 import PortfolioView from "./components/PortfolioView";
-import { useEffect, useState } from "react";
+import TrendingBar from "./components/TrendingBar";
+import RecommendationPanel from "./components/RecommendationPanel";
+import { useState } from "react";
 import Navbar from "./components/Navbar";
 import MetricCard from "./components/MetricCard";
 import StockSearch from "./components/StockSearch";
-import { analyzeStock, getTrending } from "./services/api";
+import { analyzeStock, recommendStock } from "./services/api";
 
 function App() {
   const [stockData, setStockData] = useState({
@@ -14,36 +16,47 @@ function App() {
     signal: "BUY",
   });
 
+  const [recommendation, setRecommendation] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   async function handleSearch(ticker) {
     try {
+      setLoading(true);
+      setError("");
+
       const data = await analyzeStock(ticker);
       console.log("Analyze response:", data);
       setStockData(data);
+
+      const recommendationData = await recommendStock(ticker);
+      console.log("Recommendation response:", recommendationData);
+      setRecommendation(recommendationData);
     } catch (error) {
-      console.error("Error analyzing stock:", error);
+      console.error("Error searching stock:", error);
+      setError("Could not find that ticker. Please try another symbol.");
+    } finally {
+      setLoading(false);
     }
   }
-
-  useEffect(() => {
-    async function loadTrending() {
-      try {
-        const data = await getTrending();
-        console.log("Trending response:", data);
-      } catch (error) {
-        console.error("Error loading trending:", error);
-      }
-    }
-
-    loadTrending();
-  }, []);
 
   return (
     <div>
       <Navbar />
 
+      <TrendingBar />
+
       <h1>AlphaLens Dashboard</h1>
 
       <StockSearch onSearch={handleSearch} />
+
+      {loading && <p>Loading stock data...</p>}
+
+      {error && (
+        <p style={{ color: "red", fontWeight: "bold" }}>
+          {error}
+        </p>
+      )}
 
       <div>
         <MetricCard label="Ticker" value={stockData.ticker} />
@@ -52,7 +65,9 @@ function App() {
         <MetricCard label="Signal" value={stockData.signal} />
       </div>
 
-      <StockChart />
+      <RecommendationPanel recommendation={recommendation} />
+
+      <StockChart ticker={stockData.ticker} />
 
       <PortfolioView />
     </div>

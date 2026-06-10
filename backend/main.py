@@ -12,6 +12,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 sys.path.insert(0, str(DATA_DIR))
 
 
+from stock_data import get_stock_data
 from indicators import analyze_stock, compare_stocks
 from recommendation import recommend
 from strategy import compare_strategies, portfolio_summary
@@ -279,4 +280,52 @@ def portfolio_endpoint(
         raise HTTPException(
             status_code=400,
             detail=f"Could not build portfolio summary: {str(e)}"
+        )
+
+
+@app.get("/prices/{ticker}")
+def prices_endpoint(ticker: str, period: str = "1y"):
+    try:
+        ticker = validate_ticker(ticker)
+        period = validate_period(period)
+
+        df = get_stock_data(ticker, period=period)
+
+        if df.empty:
+            raise ValueError(f"No price data found for {ticker}")
+
+        df = df.reset_index()
+
+        price_column = "Close"
+
+        if "Adj Close" in df.columns:
+            price_column = "Adj Close"
+
+        prices = []
+
+        for _, row in df.iterrows():
+            price = row[price_column]
+
+            if price is not None:
+                prices.append({
+                    "date": str(row["Date"])[:10],
+                    "close": round(float(price), 2)
+                })
+
+        if not prices:
+            raise ValueError(f"No usable prices found for {ticker}")
+
+        return {
+            "ticker": ticker,
+            "period": period,
+            "prices": prices
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not get prices for {ticker}: {str(e)}"
         )

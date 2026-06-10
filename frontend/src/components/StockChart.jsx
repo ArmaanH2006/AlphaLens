@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -6,67 +6,94 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  ResponsiveContainer,
 } from "recharts";
+import { getPrices } from "../services/api";
 
-const chartData = {
-  "30d": [
-    { date: "Day 1", price: 180 },
-    { date: "Day 5", price: 184 },
-    { date: "Day 10", price: 181 },
-    { date: "Day 15", price: 188 },
-    { date: "Day 20", price: 191 },
-    { date: "Day 25", price: 187 },
-    { date: "Day 30", price: 194 },
-  ],
-  "3m": [
-    { date: "Month 1", price: 165 },
-    { date: "Month 1.5", price: 172 },
-    { date: "Month 2", price: 180 },
-    { date: "Month 2.5", price: 176 },
-    { date: "Month 3", price: 194 },
-  ],
-  "6m": [
-    { date: "Jan", price: 150 },
-    { date: "Feb", price: 158 },
-    { date: "Mar", price: 170 },
-    { date: "Apr", price: 165 },
-    { date: "May", price: 185 },
-    { date: "Jun", price: 194 },
-  ],
-  all: [
-    { date: "2021", price: 120 },
-    { date: "2022", price: 145 },
-    { date: "2023", price: 160 },
-    { date: "2024", price: 175 },
-    { date: "2025", price: 194 },
-  ],
-};
+function StockChart({ ticker }) {
+  const [chartData, setChartData] = useState([]);
+  const [timeframe, setTimeframe] = useState("1y");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-function StockChart() {
-  const [timeframe, setTimeframe] = useState("30d");
+  const periods = [
+    { label: "30d", value: "1mo" },
+    { label: "3m", value: "3mo" },
+    { label: "6m", value: "6mo" },
+    { label: "All", value: "5y" },
+  ];
+
+  useEffect(() => {
+    async function loadPrices() {
+      if (!ticker) {
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await getPrices(ticker, timeframe);
+        console.log("Price response:", data);
+
+        setChartData(data.prices || []);
+      } catch (error) {
+        console.error("Error loading prices:", error);
+        setError("Could not load chart data.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadPrices();
+  }, [ticker, timeframe]);
 
   return (
     <div>
-      <h2>Stock Chart</h2>
+      <h2>{ticker} Price Chart</h2>
 
       <div>
-        <button onClick={() => setTimeframe("30d")}>30d</button>
-        <button onClick={() => setTimeframe("3m")}>3m</button>
-        <button onClick={() => setTimeframe("6m")}>6m</button>
-        <button onClick={() => setTimeframe("all")}>All</button>
+        {periods.map((period) => (
+          <button
+            key={period.value}
+            onClick={() => setTimeframe(period.value)}
+            style={{
+              fontWeight: timeframe === period.value ? "bold" : "normal",
+            }}
+          >
+            {period.label}
+          </button>
+        ))}
       </div>
 
       <p>Selected timeframe: {timeframe}</p>
 
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <LineChart width={600} height={300} data={chartData[timeframe]}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis />
-          <Tooltip />
-          <Line type="monotone" dataKey="price" />
-        </LineChart>
-      </div>
+      {loading && <p>Loading chart...</p>}
+
+      {error && (
+        <p style={{ color: "red", fontWeight: "bold" }}>
+          {error}
+        </p>
+      )}
+
+      {!loading && !error && (
+        <div style={{ width: "100%", height: "300px" }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+              <YAxis domain={["auto", "auto"]} />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="close"
+                dot={false}
+                strokeWidth={2}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }

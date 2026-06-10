@@ -19,3 +19,20 @@ export async function getPortfolio(tickers) {
 
   return response.data;
 }
+
+export async function recommendStock(ticker) {
+  const response = await axios.get(`${API_BASE_URL}/recommend/${ticker}`);
+  return response.data;
+}
+
+export async function getPrices(ticker, period) {
+  const response = await axios.get(
+    `${API_BASE_URL}/prices/${ticker}?period=${period}`
+  );
+
+  return response.data;
+}
+
+
+
+
