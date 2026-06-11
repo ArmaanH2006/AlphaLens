@@ -2,6 +2,7 @@ import StockChart from "./components/StockChart";
 import PortfolioView from "./components/PortfolioView";
 import TrendingBar from "./components/TrendingBar";
 import RecommendationPanel from "./components/RecommendationPanel";
+import StrategyAnalyzer from "./components/StrategyAnalyzer";
 import { useState } from "react";
 import Navbar from "./components/Navbar";
 import MetricCard from "./components/MetricCard";
@@ -68,6 +69,8 @@ function App() {
       <RecommendationPanel recommendation={recommendation} />
 
       <StockChart ticker={stockData.ticker} />
+
+      <StrategyAnalyzer ticker={stockData.ticker} />
 
       <PortfolioView />
     </div>

@@ -33,6 +33,10 @@ export async function getPrices(ticker, period) {
   return response.data;
 }
 
+export async function getStrategies(ticker) {
+  const response = await axios.get(`${API_BASE_URL}/strategies/${ticker}`);
+  return response.data;
+}
 
 
 
