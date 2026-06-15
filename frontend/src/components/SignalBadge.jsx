@@ -1,19 +1,11 @@
 function SignalBadge({ label }) {
-  let color = "gray";
+  const pillClass =
+    label === "BUY"  ? "signal-pill signal-buy"  :
+    label === "SELL" ? "signal-pill signal-sell" :
+    label === "HOLD" ? "signal-pill signal-hold" :
+                       "signal-pill signal-hold";
 
-  if (label === "BUY") {
-    color = "green";
-  } else if (label === "HOLD") {
-    color = "blue";
-  } else if (label === "SELL") {
-    color = "red";
-  }
-
-  return (
-    <span style={{ color: color, fontWeight: "bold" }}>
-      {label}
-    </span>
-  );
+  return <span className={pillClass}>{label}</span>;
 }
 
 export default SignalBadge;

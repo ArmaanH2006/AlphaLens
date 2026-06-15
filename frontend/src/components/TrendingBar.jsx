@@ -3,71 +3,64 @@ import { getTrending } from "../services/api";
 
 function TrendingBar() {
   const [trending, setTrending] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState("");
 
   useEffect(() => {
     async function loadTrending() {
       try {
         setLoading(true);
         setError("");
-
         const data = await getTrending();
         console.log("Trending bar response:", data);
-
         setTrending(data.buy_signals || []);
-      } catch (error) {
-        console.error("Error loading trending bar:", error);
+      } catch (err) {
+        console.error("Error loading trending bar:", err);
         setError("Could not load trending stocks.");
       } finally {
         setLoading(false);
       }
     }
-
     loadTrending();
   }, []);
 
-  if (loading) {
-    return <p>Loading trending stocks...</p>;
-  }
-
-  if (error) {
-    return <p>{error}</p>;
-  }
+  /* ── Duplicate items so the scroll loops seamlessly ── */
+  const items = trending.length > 0 ? [...trending, ...trending] : [];
 
   return (
-    <div>
-      <h2>Trending BUY Signals</h2>
+    <div className="ticker-tape">
+      {loading && (
+        <span className="ticker-item">
+          <span className="ticker-symbol">Loading signals...</span>
+        </span>
+      )}
 
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          overflowX: "auto",
-          padding: "10px",
-          border: "1px solid #ddd",
-        }}
-      >
-        {trending.length === 0 ? (
-          <p>No BUY signals found right now.</p>
-        ) : (
-          trending.map((stock) => (
-            <div
-              key={stock.ticker}
-              style={{
-                minWidth: "140px",
-                padding: "10px",
-                border: "1px solid #ccc",
-                borderRadius: "8px",
-              }}
-            >
-              <strong>{stock.ticker}</strong>
-              <p>Score: {stock.score}</p>
-              <p>{stock.label}</p>
-            </div>
-          ))
-        )}
-      </div>
+      {error && (
+        <span className="ticker-item">
+          <span className="ticker-symbol" style={{ color: "#E24B4A" }}>
+            {error}
+          </span>
+        </span>
+      )}
+
+      {!loading && !error && trending.length === 0 && (
+        <span className="ticker-item">
+          <span className="ticker-symbol">No BUY signals right now</span>
+        </span>
+      )}
+
+      {!loading && !error && trending.length > 0 && (
+        <div className="ticker-scroll">
+          {items.map((stock, i) => (
+            <span className="ticker-item" key={`${stock.ticker}-${i}`}>
+              <span className="ticker-symbol">{stock.ticker}</span>
+              <span className="ticker-up">
+                {stock.label ?? "BUY"} · {stock.score}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

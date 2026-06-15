@@ -4,30 +4,56 @@ import SignalBadge from "./SignalBadge";
 
 function PortfolioView() {
   const [portfolio, setPortfolio] = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState("");
 
   useEffect(() => {
     async function loadPortfolio() {
       try {
+        setLoading(true);
         const data = await getPortfolio("AAPL,NVDA,TSLA,MSFT,AMD");
         console.log("Portfolio response:", data);
         setPortfolio(data);
-      } catch (error) {
-        console.error("Error loading portfolio:", error);
+      } catch (err) {
+        console.error("Error loading portfolio:", err);
+        setError("Could not load portfolio.");
+      } finally {
+        setLoading(false);
       }
     }
-
     loadPortfolio();
   }, []);
 
-  if (!portfolio) {
-    return <p>Loading portfolio...</p>;
+  if (loading) {
+    return (
+      <div className="portfolio-panel">
+        <div className="panel-section-title">Portfolio View</div>
+        <p className="loading-text">Loading portfolio...</p>
+      </div>
+    );
   }
 
-  return (
-    <div>
-      <h2>Portfolio View</h2>
+  if (error) {
+    return (
+      <div className="portfolio-panel">
+        <div className="panel-section-title">Portfolio View</div>
+        <p className="error-text">{error}</p>
+      </div>
+    );
+  }
 
-      <div style={{ display: "flex", justifyContent: "center" }}>
+  if (!portfolio) return null;
+
+  return (
+    <div className="portfolio-panel">
+      {/* Header */}
+      <div className="panel-section-title">
+        <span className="live-dot" style={{ marginRight: 6 }} />
+        Portfolio View
+      </div>
+
+      {/* Table */}
+      <div className="strategy-table-wrap">
         <table>
           <thead>
             <tr>
@@ -38,14 +64,23 @@ function PortfolioView() {
               <th>Signal</th>
             </tr>
           </thead>
-
           <tbody>
             {portfolio.stocks.map((stock) => (
               <tr key={stock.ticker}>
-                <td>{stock.ticker}</td>
-                <td>{stock.best_strategy}</td>
+                <td>
+                  <span className="port-sym">{stock.ticker}</span>
+                </td>
+                <td className="text-muted">{stock.best_strategy}</td>
                 <td>{stock.best_sharpe}</td>
-                <td>{stock.best_total_return}</td>
+                <td
+                  className={
+                    parseFloat(stock.best_total_return) >= 0
+                      ? "text-up"
+                      : "text-down"
+                  }
+                >
+                  {stock.best_total_return}%
+                </td>
                 <td>
                   <SignalBadge label={stock.best_signal} />
                 </td>
