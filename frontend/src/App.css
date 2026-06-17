@@ -188,8 +188,9 @@ body {
 .idx-name            { font-size: 11px; color: #666; margin-bottom: 2px; }
 .idx-val             { font-size: 14px; font-weight: 500; color: #fff; }
 .idx-row             { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
-.idx-chg             { font-size: 11px; }
+.idx-chg             { font-size: 11px; white-space: nowrap; flex-shrink: 0; }
 .idx-bar             { height: 2px; border-radius: 2px; flex: 1; max-width: 80px; min-width: 20px; }
+.idx-row svg         { flex-shrink: 0; margin-left: auto; }
 
 /* ── AI digest strip ── */
 .ai-digest {
@@ -259,10 +260,7 @@ body {
   padding: 20px 0 48px;
 }
 
-.hero-section {
-  margin-bottom: 16px;
-}
-
+.hero-section { margin-bottom: 16px; }
 .hero-section h1 { display: none; }
 
 .dashboard-grid {
@@ -292,7 +290,6 @@ body {
 
 .left-panel:hover { border-color: #2a2a2e; }
 
-/* right-panel is transparent — chart-panel handles its own styling */
 .right-panel {
   background: transparent;
   border: none;
@@ -359,7 +356,6 @@ body {
   margin-top: 2px;
 }
 
-/* Signal pill inside metric card */
 .metric-card .signal-pill {
   font-size: 12px;
   padding: 4px 12px;
@@ -410,7 +406,6 @@ body {
 .bar-up     { background: #1D9E75; }
 .bar-down   { background: #E24B4A; }
 
-/* Live dot */
 .live-dot {
   display: inline-block;
   width: 6px;
@@ -428,10 +423,7 @@ body {
 /* ============================================================
    STOCK SEARCH BAR
    ============================================================ */
-.stock-search-wrap {
-  width: 100%;
-  margin-bottom: 20px;
-}
+.stock-search-wrap { width: 100%; margin-bottom: 20px; }
 
 .stock-search-inner {
   display: flex;
@@ -540,41 +532,12 @@ body {
   flex-wrap: wrap;
 }
 
-.chart-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #fff;
-  margin-bottom: 4px;
-}
-
-.chart-price {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.chart-price-val {
-  font-size: 22px;
-  font-weight: 500;
-  color: #fff;
-  letter-spacing: -0.02em;
-}
-
-.chart-price-chg {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.chart-timeframes {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.chart-container {
-  width: 100%;
-  position: relative;
-}
+.chart-title      { font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+.chart-price      { display: flex; align-items: baseline; gap: 8px; }
+.chart-price-val  { font-size: 22px; font-weight: 500; color: #fff; letter-spacing: -0.02em; }
+.chart-price-chg  { font-size: 13px; font-weight: 500; }
+.chart-timeframes { display: flex; gap: 4px; align-items: center; }
+.chart-container  { width: 100%; position: relative; }
 
 .tf-btn {
   font-size: 11px;
@@ -612,7 +575,7 @@ body {
   border-top: 0.5px solid #1e1e22;
 }
 
-.rec-empty    { font-size: 13px; color: #444; margin: 0; }
+.rec-empty  { font-size: 13px; color: #444; margin: 0; }
 
 .rec-header {
   display: flex;
@@ -701,15 +664,11 @@ th {
   background: #0d0d0f;
 }
 
-td                { color: #ccc; font-size: 13px; }
-tr:last-child td  { border-bottom: none; }
-tr:hover td       { background: rgba(255, 255, 255, 0.02); }
+td               { color: #ccc; font-size: 13px; }
+tr:last-child td { border-bottom: none; }
+tr:hover td      { background: rgba(255, 255, 255, 0.02); }
 
-tr.row-best td {
-  background: rgba(29, 158, 117, 0.06);
-  color: #fff;
-}
-
+tr.row-best td { background: rgba(29, 158, 117, 0.06); color: #fff; }
 tr.row-best td:first-child { border-left: 2px solid #1D9E75; }
 
 /* ============================================================
@@ -852,8 +811,7 @@ tr.row-best td:first-child { border-left: 2px solid #1D9E75; }
 
   .metric-grid  { grid-template-columns: 1fr 1fr; }
   .indices-bar  { grid-template-columns: repeat(2, 1fr); }
-
-  .news-grid { grid-template-columns: 1fr; }
+  .news-grid    { grid-template-columns: 1fr; }
 
   .news-grid-card {
     border-right: none;
@@ -886,7 +844,6 @@ tr.row-best td:first-child { border-left: 2px solid #1D9E75; }
   .dashboard-grid { gap: 14px; }
 }
 
-
 /* ============================================================
    HOMEPAGE LAYOUT
    ============================================================ */
@@ -896,7 +853,6 @@ tr.row-best td:first-child { border-left: 2px solid #1D9E75; }
   gap: 20px;
 }
 
-/* Hero + stories 2-col */
 .hp-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
@@ -907,10 +863,8 @@ tr.row-best td:first-child { border-left: 2px solid #1D9E75; }
 .hp-left  { display: flex; flex-direction: column; gap: 0; }
 .hp-right { display: flex; flex-direction: column; gap: 12px; }
 
-/* Search on homepage */
 .hp-search-wrap { width: 100%; }
 
-/* Panel card */
 .hp-panel {
   background: #111114;
   border: 0.5px solid #1e1e22;
@@ -928,13 +882,8 @@ tr.row-best td:first-child { border-left: 2px solid #1D9E75; }
   align-items: center;
 }
 
-.hp-panel-link {
-  font-size: 11px;
-  color: #1D9E75;
-  cursor: pointer;
-}
+.hp-panel-link { font-size: 11px; color: #1D9E75; cursor: pointer; }
 
-/* News items inside hp-panel — override padding */
 .hp-panel .news-item {
   padding: 9px 14px;
   border-bottom: 0.5px solid #1e1e22;
@@ -943,14 +892,12 @@ tr.row-best td:first-child { border-left: 2px solid #1D9E75; }
 
 .hp-panel .news-item:last-child { border-bottom: none; }
 
-/* Hero sentiment badge — top right of image */
 .hero-sentiment-badge {
   position: absolute;
   top: 10px;
   right: 10px;
 }
 
-/* ── Bottom 2-col: sector + earnings ── */
 .hp-bottom-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -998,13 +945,12 @@ tr.row-best td:first-child { border-left: 2px solid #1D9E75; }
 .earnings-item:last-child { border-bottom: none; }
 .earnings-item:hover      { opacity: 0.75; }
 
-.earnings-left  { display: flex; flex-direction: column; gap: 2px; }
-.earnings-ticker { font-size: 14px; font-weight: 500; color: #fff; }
-.earnings-time   { font-size: 11px; color: #555; }
-
-.earnings-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-.earnings-day      { font-size: 12px; color: #888; }
-.earnings-expected { font-size: 11px; font-weight: 500; }
+.earnings-left           { display: flex; flex-direction: column; gap: 2px; }
+.earnings-ticker         { font-size: 14px; font-weight: 500; color: #fff; }
+.earnings-time           { font-size: 11px; color: #555; }
+.earnings-right          { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.earnings-day            { font-size: 12px; color: #888; }
+.earnings-expected       { font-size: 11px; font-weight: 500; }
 
 /* ============================================================
    RESPONSIVE — homepage

@@ -1,64 +1,70 @@
 import { useEffect, useState } from "react";
-import { getTrending } from "../services/api";
+
+const TICKERS = [
+  "AAPL", "NVDA", "MSFT", "AMZN", "GOOGL",
+  "META", "TSLA", "AMD", "AVGO", "JPM",
+  "SPY", "QQQ", "UNH", "LLY", "COST", "WMT"
+];
+
+const FINNHUB_KEY = import.meta.env.VITE_FINNHUB_KEY;
 
 function TrendingBar() {
-  const [trending, setTrending] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState("");
+  const [quotes, setQuotes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadTrending() {
+    async function loadQuotes() {
       try {
-        setLoading(true);
-        setError("");
-        const data = await getTrending();
-        console.log("Trending bar response:", data);
-        setTrending(data.buy_signals || []);
+        const results = await Promise.all(
+          TICKERS.map(async (ticker) => {
+            const res = await fetch(
+              `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`
+            );
+            const data = await res.json();
+            return {
+              ticker,
+              change: data.d ?? 0,
+              pct: data.dp ?? 0,
+            };
+          })
+        );
+        setQuotes(results);
       } catch (err) {
-        console.error("Error loading trending bar:", err);
-        setError("Could not load trending stocks.");
+        console.error("Error loading quotes:", err);
       } finally {
         setLoading(false);
       }
     }
-    loadTrending();
+
+    loadQuotes();
+    const interval = setInterval(loadQuotes, 60000);
+    return () => clearInterval(interval);
   }, []);
 
-  /* ── Duplicate items so the scroll loops seamlessly ── */
-  const items = trending.length > 0 ? [...trending, ...trending] : [];
+  const items = quotes.length > 0 ? [...quotes, ...quotes] : [];
 
   return (
     <div className="ticker-tape">
       {loading && (
         <span className="ticker-item">
-          <span className="ticker-symbol">Loading signals...</span>
+          <span className="ticker-symbol">Loading market data...</span>
         </span>
       )}
 
-      {error && (
-        <span className="ticker-item">
-          <span className="ticker-symbol" style={{ color: "#E24B4A" }}>
-            {error}
-          </span>
-        </span>
-      )}
-
-      {!loading && !error && trending.length === 0 && (
-        <span className="ticker-item">
-          <span className="ticker-symbol">No BUY signals right now</span>
-        </span>
-      )}
-
-      {!loading && !error && trending.length > 0 && (
+      {!loading && quotes.length > 0 && (
         <div className="ticker-scroll">
-          {items.map((stock, i) => (
-            <span className="ticker-item" key={`${stock.ticker}-${i}`}>
-              <span className="ticker-symbol">{stock.ticker}</span>
-              <span className="ticker-up">
-                {stock.label ?? "BUY"} · {stock.score}
+          {items.map((stock, i) => {
+            const isUp = stock.change >= 0;
+            const sign = isUp ? "+" : "";
+            return (
+              <span className="ticker-item" key={`${stock.ticker}-${i}`}>
+                <span className="ticker-symbol">{stock.ticker}</span>
+                <span className={isUp ? "ticker-up" : "ticker-down"}>
+                  {sign}{stock.change.toFixed(2)} ({sign}{stock.pct.toFixed(2)}%)
+                </span>
               </span>
-            </span>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
