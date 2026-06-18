@@ -1,4 +1,3 @@
-
 import "./App.css";
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
@@ -10,6 +9,7 @@ import StockPage     from "./pages/StockPage";
 import ScreenerPage   from "./pages/ScreenerPage";
 import PortfolioPage  from "./pages/PortfolioPage";
 import NewsPage       from "./pages/NewsPage";
+import StrategiesPage from "./pages/StrategiesPage";
  
 const FINNHUB_KEY = import.meta.env.VITE_FINNHUB_KEY;
  
@@ -248,7 +248,7 @@ function AppInner() {
           <Route path="/stock/:ticker" element={<StockPage />} />
           <Route path="/screener"      element={<ScreenerPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
-          <Route path="/strategies"    element={<div className="dashboard-shell"><p className="loading-text">Strategies coming soon</p></div>} />
+          <Route path="/strategies" element={<StrategiesPage />} />
           <Route path="/news" element={<NewsPage />} />
         </Routes>
       </main>
