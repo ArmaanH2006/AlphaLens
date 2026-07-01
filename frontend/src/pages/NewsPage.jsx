@@ -19,26 +19,18 @@ const ONE_HOUR_SECONDS = 60 * 60;
 
 const CATEGORY_STYLE = {
   general: {
-    accent: "#5B8DEF",
-    gradient: "linear-gradient(135deg, #1a2332 0%, #0f1420 100%)",
     icon: "📰",
     label: "General",
   },
   crypto: {
-    accent: "#F2B84B",
-    gradient: "linear-gradient(135deg, #2b2210 0%, #16130a 100%)",
     icon: "◈",
     label: "Crypto",
   },
   forex: {
-    accent: "#3FC1A6",
-    gradient: "linear-gradient(135deg, #0f2620 0%, #0a1512 100%)",
     icon: "⇄",
     label: "Forex",
   },
   merger: {
-    accent: "#B37FEB",
-    gradient: "linear-gradient(135deg, #251a2e 0%, #140e19 100%)",
     icon: "⬡",
     label: "Merger",
   },
@@ -425,25 +417,10 @@ function SentimentBadge({ type }) {
 }
 
 function CategoryPill({ category }) {
+  const normalized = normalizeCategory(category);
   const style = categoryStyle(category);
 
-  return (
-    <span
-      style={{
-        color: style.accent,
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: 999,
-        padding: "4px 9px",
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: 0.7,
-        textTransform: "uppercase",
-      }}
-    >
-      {style.label}
-    </span>
-  );
+  return <span className={`category-pill category-pill-${normalized}`}>{style.label}</span>;
 }
 
 function ArticleImage({ src, category, height }) {
@@ -453,17 +430,17 @@ function ArticleImage({ src, category, height }) {
     setFailed(false);
   }, [src]);
 
+  const normalized = normalizeCategory(category);
   const style = categoryStyle(category);
   const showImage = Boolean(src) && !failed;
 
   return (
     <div
-      className="np-img-wrap"
+      className={`np-img-wrap np-img-wrap-${normalized}`}
       style={{
         position: "relative",
         height,
         overflow: "hidden",
-        background: style.gradient,
       }}
     >
       {showImage ? (
@@ -489,7 +466,7 @@ function ArticleImage({ src, category, height }) {
             alignItems: "center",
             justifyContent: "center",
             fontSize: height > 150 ? 42 : 24,
-            color: style.accent,
+            color: "inherit",
             opacity: 0.72,
           }}
         >
@@ -737,7 +714,12 @@ function EmptyState({ activeTab, onRetry }) {
         background: "rgba(255,255,255,0.02)",
       }}
     >
-      <div style={{ fontSize: 36, marginBottom: 12, color: style.accent }}>{style.icon}</div>
+      <div
+        className={`category-empty-icon category-empty-icon-${normalizeCategory(activeTab)}`}
+        style={{ fontSize: 36, marginBottom: 12 }}
+      >
+        {style.icon}
+      </div>
 
       <p style={{ fontSize: 14, color: "#a0a0aa", margin: "0 0 6px" }}>
         No clean {activeTab.toLowerCase()} stories found.
@@ -963,34 +945,88 @@ function NewsPage() {
           box-shadow: 0 8px 22px rgba(29,158,117,0.18);
         }
 
-        .badge {
-          border-radius: 999px;
-          font-family: inherit;
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 0.2px;
-          line-height: 1;
-          padding: 4px 8px;
+        .badge,
+        .category-pill {
+          display: inline-block;
+          font-size: 11px;
+          font-weight: 500;
+          padding: 3px 9px;
+          border-radius: 20px;
           white-space: nowrap;
+          font-family: inherit;
+        }
+
+        .category-pill {
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
         .badge-up {
+          background: #0a1f12;
           color: #1D9E75;
-          background: rgba(29,158,117,0.15);
-          border: 1px solid rgba(29,158,117,0.28);
+          border: 0.5px solid #0F6E56;
         }
 
         .badge-dn {
+          background: #1f0a0a;
           color: #E24B4A;
-          background: rgba(226,75,74,0.15);
-          border: 1px solid rgba(226,75,74,0.28);
+          border: 0.5px solid #A32D2D;
         }
 
         .badge-neu {
-          color: #aaa;
-          background: rgba(170,170,170,0.10);
-          border: 1px solid rgba(170,170,170,0.18);
+          background: #1a1209;
+          color: #BA7517;
+          border: 0.5px solid #854F0B;
         }
+
+        .category-pill-general {
+          background: #0d1726;
+          color: #5B8DEF;
+          border: 0.5px solid #27446f;
+        }
+
+        .category-pill-crypto {
+          background: #1f1608;
+          color: #F2B84B;
+          border: 0.5px solid #8f6724;
+        }
+
+        .category-pill-forex {
+          background: #071f1a;
+          color: #3FC1A6;
+          border: 0.5px solid #1f6f61;
+        }
+
+        .category-pill-merger {
+          background: #180d22;
+          color: #B37FEB;
+          border: 0.5px solid #67438a;
+        }
+
+        .np-img-wrap-general {
+          background: linear-gradient(135deg, #1a2332 0%, #0f1420 100%);
+          color: #5B8DEF;
+        }
+
+        .np-img-wrap-crypto {
+          background: linear-gradient(135deg, #2b2210 0%, #16130a 100%);
+          color: #F2B84B;
+        }
+
+        .np-img-wrap-forex {
+          background: linear-gradient(135deg, #0f2620 0%, #0a1512 100%);
+          color: #3FC1A6;
+        }
+
+        .np-img-wrap-merger {
+          background: linear-gradient(135deg, #251a2e 0%, #140e19 100%);
+          color: #B37FEB;
+        }
+
+        .category-empty-icon-general { color: #5B8DEF; }
+        .category-empty-icon-crypto { color: #F2B84B; }
+        .category-empty-icon-forex { color: #3FC1A6; }
+        .category-empty-icon-merger { color: #B37FEB; }
 
         .ticker-tag {
           color: #bfbfc8;
@@ -1250,4 +1286,3 @@ function NewsPage() {
 }
 
 export default NewsPage;
-
