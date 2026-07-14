@@ -1,205 +1,347 @@
-import pandas as pd
+"""Technical indicators and stock-level performance metrics.
+
+The public functions in this module intentionally keep the names used by the
+recommendation and strategy modules: ``clean_float``, ``flatten_columns``,
+``get_price_column``, ``get_indicators``, ``analyze_stock``, and
+``compare_stocks``.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterable
+from datetime import time
+from typing import Any
+
 import numpy as np
-from stock_data import get_stock_data
+import pandas as pd
+
+if __package__:
+    from .stock_data import get_stock_data
+else:
+    from stock_data import get_stock_data
 
 
-def clean_float(x):
-    # clean float function makes sure the output is given correctly 
-    if pd.isna(x):
+TRADING_DAYS_PER_YEAR = 252
+RSI_WINDOW = 14
+SHORT_MA_WINDOW = 50
+LONG_MA_WINDOW = 200
+BOLLINGER_WINDOW = 20
+VOLATILITY_WINDOW = 30
+
+RESULT_COLUMNS = [
+    "ticker",
+    "sharpe",
+    "annual_return",
+    "max_drawdown",
+    "current_rsi",
+    "volatility",
+    "signal",
+    "analysis_start",
+    "analysis_end",
+    "observations",
+]
+
+
+def clean_float(value: Any) -> float | None:
+    """Return a finite, two-decimal Python float or ``None``."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
         return None
-    return float(round(x, 2))
+
+    if not np.isfinite(number):
+        return None
+
+    return round(number, 2)
 
 
-def flatten_columns(df):
-    # handles yfinance data if it comes back with multi-level columns
-    if isinstance(df.columns, pd.MultiIndex):
-        if "Close" in df.columns.get_level_values(0):
-            df.columns = df.columns.get_level_values(0)
-        elif "Close" in df.columns.get_level_values(1):
-            df.columns = df.columns.get_level_values(1)
+def flatten_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Flatten a single-ticker yfinance-style MultiIndex.
 
-    return df
+    A multi-ticker download would create duplicate names such as several
+    ``Close`` columns. This module analyzes one ticker at a time, so that input
+    is rejected with a clear error instead of producing ambiguous calculations.
+    """
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Stock data must be a pandas DataFrame")
+
+    if not isinstance(df.columns, pd.MultiIndex):
+        return df
+
+    price_level = None
+    for level in range(df.columns.nlevels):
+        labels = set(df.columns.get_level_values(level))
+        if "Adj Close" in labels or "Close" in labels:
+            price_level = level
+            break
+
+    if price_level is None:
+        raise ValueError("Could not identify the price level in MultiIndex columns")
+
+    flattened = df.copy()
+    flattened.columns = flattened.columns.get_level_values(price_level)
+
+    if flattened.columns.duplicated().any():
+        raise ValueError(
+            "Multiple columns share the same price name. "
+            "Download and analyze one ticker at a time."
+        )
+
+    return flattened
 
 
-def get_price_column(df):
-    # use adjusted close if it exists, otherwise use Close
-    # adjusted close is better because it accounts for splits/dividends
+def get_price_column(df: pd.DataFrame) -> str:
+    """Select adjusted close when supplied, otherwise ordinary close."""
     if "Adj Close" in df.columns:
         return "Adj Close"
-    elif "Close" in df.columns:
+    if "Close" in df.columns:
         return "Close"
+    raise ValueError("No Close or Adj Close column found in the stock data")
+
+
+def drop_incomplete_current_day(
+    df: pd.DataFrame,
+    *,
+    market_timezone: str = "America/New_York",
+    settlement_delay_minutes: int = 15,
+    now: pd.Timestamp | None = None,
+) -> pd.DataFrame:
+    """Drop today's daily row while the regular US session may be unfinished.
+
+    This lightweight guard is intended for the US-listed symbols used by the
+    project. A full multi-exchange application should use an exchange calendar.
+    """
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Stock data must be a pandas DataFrame")
+    if df.empty or not isinstance(df.index, pd.DatetimeIndex):
+        return df
+    if settlement_delay_minutes < 0:
+        raise ValueError("settlement_delay_minutes cannot be negative")
+
+    if now is None:
+        current_time = pd.Timestamp.now(tz=market_timezone)
     else:
-        raise ValueError("No Close or Adj Close column found in the stock data")
+        current_time = pd.Timestamp(now)
+        if current_time.tzinfo is None:
+            current_time = current_time.tz_localize(market_timezone)
+        else:
+            current_time = current_time.tz_convert(market_timezone)
 
+    last_timestamp = pd.Timestamp(df.index[-1])
+    if last_timestamp.tzinfo is not None:
+        last_timestamp = last_timestamp.tz_convert(market_timezone)
 
-def get_indicators(df):
-    df = df.copy().sort_index()
-    df = flatten_columns(df)
+    close_minutes = 16 * 60 + settlement_delay_minutes
+    cutoff = time(hour=close_minutes // 60, minute=close_minutes % 60)
 
-    price_col = get_price_column(df)
-
-    # make sure Daily_Return exists and uses the same price column
-    df["Daily_Return"] = df[price_col].pct_change()
-
-    # calculates the 50 day and 200 day moving averages.  
-    df['MA_50'] = df[price_col].rolling(window=50).mean()
-    df['MA_200'] = df[price_col].rolling(window=200).mean()
-
-
-    #calculate RSI. Relative Strength Index (RSI) is a momentum oscillator that measures the speed and change of price movements. It is typically used to identify overbought or oversold conditions in a stock.
-
-
-    #step 1 calculate the daily price changes
-    delta = df[price_col].diff()
-
-    #step 2 separate the gains and losses
-    gain = delta.where(delta > 0, 0)
-    loss = -delta.where(delta < 0, 0)
-
-    #step 3 and 4 find the average gain and loss over a 14 day period
-    avg_gain = gain.ewm(alpha=1/14, adjust=False, min_periods=14).mean()
-    avg_loss = loss.ewm(alpha=1/14, adjust=False, min_periods=14).mean()
-
-    #step 5 calculate the relative strength (RS) Make sure the average loss is not zero to avoid division by zero errors. If the average loss is zero, we can set the RS to a very high value (indicating an extremely strong gain) or handle it in a way that makes sense for your analysis.
-    RS = avg_gain / avg_loss.replace(0, np.nan)
-    RSI = 100 - (100 / (1 + RS))
-    df['RSI'] = RSI
-
-    #MACD line and a MACD signal line.
-    ema_12 = df[price_col].ewm(span=12, adjust=False).mean()
-    ema_26 = df[price_col].ewm(span=26, adjust=False).mean()
-    df['MACD'] = ema_12 - ema_26
-    df['MACD_signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
-
-    #Bollinger Bands upper, mid, lower
-    df['BB_Mid'] = df[price_col].rolling(window=20).mean()
-    df['BB_Std'] = df[price_col].rolling(window=20).std()
-
-    #claculate the upper and lower bands
-    df['BB_Upper'] = df['BB_Mid'] + (df['BB_Std'] * 2)
-    df['BB_Lower'] = df['BB_Mid'] - (df['BB_Std'] * 2)
-
-    #rolling 30 day volitility anualized
-    df['Volatility'] = df['Daily_Return'].rolling(30).std() * (252**0.5)
-
-    # IMPORTANT:
-    # Do not return df.dropna() here because it removes about 199 rows
-    # due to the 200 day moving average. That was making annual return
-    # calculate from only a short recent period.
+    if (
+        last_timestamp.date() == current_time.date()
+        and current_time.time() < cutoff
+    ):
+        return df.iloc[:-1].copy()
     return df
 
 
-#analyze_stock(ticker) that returns Sharpe, annual return, max drawdown, RSI, volatility, and buy/sell signal
+def _format_index_value(value: Any) -> str:
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    return str(value)
 
-def analyze_stock(ticker, debug=False):
-    raw_df = get_stock_data(ticker)
-    raw_df = raw_df.copy().sort_index()
-    raw_df = flatten_columns(raw_df)
 
-    price_col = get_price_column(raw_df)
+def get_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy of ``df`` with technical-indicator columns added."""
+    df = flatten_columns(df).copy().sort_index()
 
-    # use the real price series from the downloaded data
-    price_series = raw_df[price_col].dropna()
+    if df.empty:
+        raise ValueError("Stock data is empty")
 
-    if len(price_series) < 30:
-        raise ValueError(f"Not enough price data to analyze {ticker}")
+    # Duplicate dates would create artificial zero-length return periods.
+    df = df.loc[~df.index.duplicated(keep="last")].copy()
 
-    # make sure Daily_Return exists and is based on the same price column
-    raw_df["Daily_Return"] = raw_df[price_col].pct_change()
+    price_col = get_price_column(df)
+    price = pd.to_numeric(df[price_col], errors="coerce")
 
-    # calculate indicators, but do not use the shortened indicator dataframe
-    # for annual return, sharpe, or max drawdown
+    usable_price = price.dropna()
+    if usable_price.empty:
+        raise ValueError(f"{price_col} does not contain usable numeric prices")
+    if not np.isfinite(usable_price).all() or (usable_price <= 0).any():
+        raise ValueError(f"{price_col} must contain finite, positive prices")
+
+    df[price_col] = price
+    df["Daily_Return"] = price.pct_change(fill_method=None)
+
+    df["MA_50"] = price.rolling(window=SHORT_MA_WINDOW).mean()
+    df["MA_200"] = price.rolling(window=LONG_MA_WINDOW).mean()
+
+    # RSI using exponentially smoothed gains and losses. Explicit handling is
+    # needed for rising-only and flat series, where average loss is zero.
+    delta = price.diff()
+    gain = delta.clip(lower=0)
+    loss = (-delta).clip(lower=0)
+
+    avg_gain = gain.ewm(
+        alpha=1 / RSI_WINDOW,
+        adjust=False,
+        min_periods=RSI_WINDOW,
+    ).mean()
+    avg_loss = loss.ewm(
+        alpha=1 / RSI_WINDOW,
+        adjust=False,
+        min_periods=RSI_WINDOW,
+    ).mean()
+
+    relative_strength = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + relative_strength))
+    rsi = rsi.mask((avg_loss == 0) & (avg_gain > 0), 100.0)
+    rsi = rsi.mask((avg_loss == 0) & (avg_gain == 0), 50.0)
+    df["RSI"] = rsi
+
+    ema_12 = price.ewm(span=12, adjust=False).mean()
+    ema_26 = price.ewm(span=26, adjust=False).mean()
+    df["MACD"] = ema_12 - ema_26
+    df["MACD_signal"] = df["MACD"].ewm(span=9, adjust=False).mean()
+
+    df["BB_Mid"] = price.rolling(window=BOLLINGER_WINDOW).mean()
+    df["BB_Std"] = price.rolling(window=BOLLINGER_WINDOW).std()
+    df["BB_Upper"] = df["BB_Mid"] + (2 * df["BB_Std"])
+    df["BB_Lower"] = df["BB_Mid"] - (2 * df["BB_Std"])
+
+    df["Volatility"] = (
+        df["Daily_Return"].rolling(VOLATILITY_WINDOW).std()
+        * np.sqrt(TRADING_DAYS_PER_YEAR)
+    )
+
+    # Keep the complete history. Dropping every row with a missing indicator
+    # would discard the MA_200 warm-up period and distort performance metrics.
+    return df
+
+
+def analyze_stock(
+    ticker: str,
+    debug: bool = False,
+    risk_free_rate: float = 0.0,
+    periods_per_year: int = TRADING_DAYS_PER_YEAR,
+    exclude_incomplete_current_day: bool = True,
+) -> dict[str, str | float | int | None]:
+    """Calculate performance metrics and the latest moving-average trend.
+
+    Percentage values in the returned dictionary are expressed as percentage
+    points. For example, ``12.5`` means 12.5%, not 0.125.
+    """
+    normalized_ticker = str(ticker).strip().upper()
+    if not normalized_ticker:
+        raise ValueError("Ticker cannot be empty")
+    if periods_per_year <= 0:
+        raise ValueError("periods_per_year must be positive")
+    if risk_free_rate <= -1:
+        raise ValueError("risk_free_rate must be greater than -1")
+
+    raw_df = get_stock_data(normalized_ticker)
+    if exclude_incomplete_current_day:
+        raw_df = drop_incomplete_current_day(raw_df)
     df = get_indicators(raw_df)
+    price_col = get_price_column(df)
 
-    # use the full return history for performance calculations
-    returns = raw_df['Daily_Return'].dropna()
+    price_series = df[price_col].dropna()
+    if len(price_series) < 30:
+        raise ValueError(f"Not enough price data to analyze {normalized_ticker}")
 
+    returns = df["Daily_Return"].dropna()
     if len(returns) < 30:
-        raise ValueError(f"Not enough return data to analyze {ticker}")
+        raise ValueError(f"Not enough return data to analyze {normalized_ticker}")
 
-    return_std = returns.std()
+    # Convert an annual effective rate to the matching per-period rate.
+    period_risk_free_rate = (
+        (1 + risk_free_rate) ** (1 / periods_per_year) - 1
+    )
+    excess_returns = returns - period_risk_free_rate
+    return_std = excess_returns.std()
 
-    if return_std == 0 or pd.isna(return_std):
+    if pd.isna(return_std) or return_std <= np.finfo(float).eps:
         sharpe_ratio = np.nan
     else:
-        sharpe_ratio = (returns.mean() / return_std) * (252 ** 0.5)
+        sharpe_ratio = (
+            excess_returns.mean() / return_std
+        ) * np.sqrt(periods_per_year)
 
-    # calculate total return directly from actual downloaded start/end prices
     start_price = price_series.iloc[0]
     end_price = price_series.iloc[-1]
-
     total_return = (end_price / start_price) - 1
 
-    # use actual calendar time if the index is dates
     if isinstance(price_series.index, pd.DatetimeIndex):
-        start_date = price_series.index[0]
-        end_date = price_series.index[-1]
-        num_years = (end_date - start_date).days / 365.25
+        elapsed_days = (
+            price_series.index[-1] - price_series.index[0]
+        ).total_seconds() / 86_400
+        num_years = elapsed_days / 365.25
     else:
-        start_date = None
-        end_date = None
-        num_years = len(returns) / 252
+        num_years = len(returns) / periods_per_year
 
-    if num_years <= 0:
-        annual_return = np.nan
-    else:
-        annual_return = (1 + total_return) ** (1 / num_years) - 1
+    annual_return = (
+        np.nan
+        if num_years <= 0
+        else (1 + total_return) ** (1 / num_years) - 1
+    )
 
-    # max drawdown based on the real price series
     cumulative_return = price_series / start_price
-    rolling_max = cumulative_return.cummax()
-    drawdown = (cumulative_return - rolling_max) / rolling_max
+    drawdown = (cumulative_return / cumulative_return.cummax()) - 1
     max_drawdown = drawdown.min()
 
-    # use latest row where the indicators needed for signal exist
-    indicator_df = df.dropna(subset=['MA_50', 'MA_200', 'RSI', 'Volatility'])
+    # Use the actual latest row. Falling back to an older complete row could
+    # silently return a stale recommendation when the newest data is missing.
+    latest = df.iloc[-1]
+    current_rsi = latest["RSI"]
+    volatility = latest["Volatility"]
 
-    if indicator_df.empty:
+    # RSI and volatility can be available before the MA_200 warm-up finishes,
+    # so return those values independently from the moving-average signal.
+    if latest[["MA_50", "MA_200"]].isna().any():
         signal = "N/A"
-        current_rsi = np.nan
-        volatility = np.nan
     else:
-        latest = indicator_df.iloc[-1]
+        if latest["MA_50"] > latest["MA_200"]:
+            signal = "BUY"
+        elif latest["MA_50"] < latest["MA_200"]:
+            signal = "SELL"
+        else:
+            signal = "HOLD"
 
-        current_rsi = latest['RSI']
-        volatility = latest['Volatility']
-
-        signal = "BUY" if latest['MA_50'] > latest['MA_200'] else "SELL"
-
-    return {
-        "ticker": ticker,
+    result: dict[str, str | float | int | None] = {
+        "ticker": normalized_ticker,
         "sharpe": clean_float(sharpe_ratio),
         "annual_return": clean_float(annual_return * 100),
         "max_drawdown": clean_float(max_drawdown * 100),
         "current_rsi": clean_float(current_rsi),
         "volatility": clean_float(volatility * 100),
-        "signal": signal
+        "signal": signal,
+        "analysis_start": _format_index_value(price_series.index[0]),
+        "analysis_end": _format_index_value(price_series.index[-1]),
+        "observations": int(len(price_series)),
     }
 
+    if debug:
+        first_date = price_series.index[0]
+        last_date = price_series.index[-1]
+        print(
+            f"Analyzed {normalized_ticker}: {len(price_series)} prices "
+            f"from {first_date} through {last_date}."
+        )
 
-#compare_stocks(tickers) that returns all analyzed stocks as a sorted DataFrame by Sharpe ratio
+    return result
 
-def compare_stocks(tickers):
-    results = []
 
-    for ticker in tickers:
-        analysis = analyze_stock(ticker)
-        results.append(analysis)
+def compare_stocks(tickers: Iterable[str]) -> pd.DataFrame:
+    """Analyze tickers and return results ordered by descending Sharpe ratio."""
+    results = [analyze_stock(ticker) for ticker in tickers]
 
-    df = pd.DataFrame(results)
+    if not results:
+        return pd.DataFrame(columns=RESULT_COLUMNS)
 
-    # sort from highest Sharpe ratio to lowest Sharpe ratio
-    df = df.sort_values(by="sharpe", ascending=False)
-
-    # reset index so it looks clean
-    df = df.reset_index(drop=True)
-
-    return df
+    return (
+        pd.DataFrame(results, columns=RESULT_COLUMNS)
+        .sort_values(by="sharpe", ascending=False, na_position="last")
+        .reset_index(drop=True)
+    )
 
 
 if __name__ == "__main__":
-    tickers = ["AAPL", "NVDA", "TSLA", "MSFT", "AMD"]
-
-    comparison_df = compare_stocks(tickers)
-
-    print(comparison_df)
+    example_tickers = ["AAPL", "NVDA", "TSLA", "MSFT", "AMD"]
+    print(compare_stocks(example_tickers))
