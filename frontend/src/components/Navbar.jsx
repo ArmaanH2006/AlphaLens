@@ -1,28 +1,28 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
- 
+
 const FINNHUB_KEY = import.meta.env.VITE_FINNHUB_KEY;
- 
+
 const NAV_LINKS = [
   { label: "Markets",    path: "/"            },
   { label: "News",       path: "/news"        },
   { label: "Screener",   path: "/screener"    },
-  { label: "Portfolio",  path: "/portfolio"   },
+  { label: "Watchlist",  path: "/portfolio"   },
   { label: "Strategies", path: "/strategies"  },
 ];
- 
+
 function Navbar({ onSearch }) {
   const [query,       setQuery]       = useState("");
   const [results,     setResults]     = useState([]);
   const [showDrop,    setShowDrop]    = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
   const [searching,   setSearching]   = useState(false);
- 
+
   const location    = useLocation();
   const inputRef    = useRef(null);
   const dropRef     = useRef(null);
   const debounceRef = useRef(null);
- 
+
   /* ── Close dropdown on outside click ── */
   useEffect(() => {
     function handleClick(e) {
@@ -36,17 +36,17 @@ function Navbar({ onSearch }) {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
- 
+
   /* ── Debounced Finnhub symbol search ── */
   useEffect(() => {
     const q = query.trim();
- 
+
     if (q.length < 1) {
       setResults([]);
       setShowDrop(false);
       return;
     }
- 
+
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
@@ -55,7 +55,7 @@ function Navbar({ onSearch }) {
           `https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${FINNHUB_KEY}`
         );
         const data = await res.json();
- 
+
         // Filter to US stocks only, dedupe, limit to 7
         const filtered = (data.result || [])
           .filter((r) =>
@@ -65,7 +65,7 @@ function Navbar({ onSearch }) {
             r.symbol.length <= 5
           )
           .slice(0, 7);
- 
+
         setResults(filtered);
         setShowDrop(filtered.length > 0);
         setHighlighted(-1);
@@ -75,10 +75,10 @@ function Navbar({ onSearch }) {
         setSearching(false);
       }
     }, 250);
- 
+
     return () => clearTimeout(debounceRef.current);
   }, [query]);
- 
+
   /* ── Navigate to stock page ── */
   function selectResult(symbol) {
     onSearch?.(symbol.toUpperCase());
@@ -88,7 +88,7 @@ function Navbar({ onSearch }) {
     setHighlighted(-1);
     inputRef.current?.blur();
   }
- 
+
   /* ── Keyboard navigation ── */
   function handleKeyDown(e) {
     if (e.key === "ArrowDown") {
@@ -109,13 +109,13 @@ function Navbar({ onSearch }) {
       setHighlighted(-1);
     }
   }
- 
+
   return (
     <nav>
       <Link to="/" className="logo-link">
         <h2>Alpha<span>Lens</span></h2>
       </Link>
- 
+
       <div className="nav-links">
         {NAV_LINKS.map((link) => (
           <Link
@@ -127,7 +127,7 @@ function Navbar({ onSearch }) {
           </Link>
         ))}
       </div>
- 
+
       {/* ── Search with dropdown ── */}
       <div className="nav-search" style={{ position: "relative" }}>
         <span className="nav-search-icon">
@@ -144,7 +144,7 @@ function Navbar({ onSearch }) {
           autoComplete="off"
           spellCheck="false"
         />
- 
+
         {/* ── Dropdown ── */}
         {showDrop && results.length > 0 && (
           <div
@@ -188,7 +188,7 @@ function Navbar({ onSearch }) {
                 }}>
                   {r.symbol}
                 </span>
- 
+
                 {/* Company name */}
                 <span style={{
                   fontSize:     12,
@@ -200,7 +200,7 @@ function Navbar({ onSearch }) {
                 }}>
                   {r.description}
                 </span>
- 
+
                 {/* Type pill */}
                 <span style={{
                   fontSize:     10,
@@ -222,6 +222,5 @@ function Navbar({ onSearch }) {
     </nav>
   );
 }
- 
+
 export default Navbar;
- 
